@@ -124,3 +124,94 @@ export function changePassword(email: string, currentPassword: string, newPasswo
   localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users))
   return true
 }
+
+export async function loginUser(
+  email: string,
+  password: string,
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    const user = loginWithEmail(email, password)
+    if (user) {
+      createSession(user)
+      return { success: true, user }
+    }
+    return { success: false, error: "Invalid email or password" }
+  } catch (error) {
+    return { success: false, error: "Login failed" }
+  }
+}
+
+export async function registerNewUser(
+  email: string,
+  password: string,
+  name: string,
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    const user = registerUser(email, name, password)
+    createSession(user)
+    return { success: true, user }
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Registration failed" }
+  }
+}
+
+export async function authenticateWithGoogle(): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    // Simulate Google OAuth flow
+    const mockGoogleUser = {
+      name: "Google User",
+      email: `user${Date.now()}@gmail.com`,
+      profilePicture: undefined,
+    }
+    const user = loginWithGoogle(mockGoogleUser)
+    createSession(user)
+    return { success: true, user }
+  } catch (error) {
+    return { success: false, error: "Google authentication failed" }
+  }
+}
+
+export async function updateUserPassword(
+  email: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const success = changePassword(email, currentPassword, newPassword)
+    if (success) {
+      return { success: true }
+    }
+    return { success: false, error: "Current password is incorrect" }
+  } catch (error) {
+    return { success: false, error: "Failed to update password" }
+  }
+}
+
+export async function updateUserProfile(
+  userId: string,
+  updates: { name?: string; profilePicture?: string },
+): Promise<{ success: boolean; user?: User; error?: string }> {
+  try {
+    const users = getAllUsers()
+    const userIndex = users.findIndex((u: any) => u.id === userId)
+
+    if (userIndex === -1) {
+      return { success: false, error: "User not found" }
+    }
+
+    const user = users[userIndex] as any
+    if (updates.name) user.name = updates.name
+    if (updates.profilePicture) user.profilePicture = updates.profilePicture
+
+    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users))
+
+    // Update session
+    const { password: _, ...userWithoutPassword } = user
+    const updatedUser = userWithoutPassword as User
+    createSession(updatedUser)
+
+    return { success: true, user: updatedUser }
+  } catch (error) {
+    return { success: false, error: "Failed to update profile" }
+  }
+}
